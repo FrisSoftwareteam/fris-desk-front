@@ -8,7 +8,13 @@ const azureClientId = process.env.NEXT_PUBLIC_AZURE_CLIENT_ID || '';
  * app that calls the officer's own computer.
  */
 function required(value: string | undefined, name: string, devDefault: string): string {
-  if (value) return value.replace(/\/+$/, '');
+  if (value) {
+    // Without a scheme the browser treats the address as a path on the web app's own site.
+    if (!/^https?:\/\//i.test(value)) {
+      throw new Error(`${name} must be a full address starting with https:// (got "${value}").`);
+    }
+    return value.replace(/\/+$/, '');
+  }
   if (process.env.NODE_ENV === 'production') {
     throw new Error(`${name} is not set. Set it for the build (e.g. in the Vercel project's environment variables).`);
   }
