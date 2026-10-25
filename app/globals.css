@@ -1,0 +1,17 @@
+/* Tailwind is for layout glue only (grid/flex/spacing). Colour, typography and component styling come
+   from Fluent UI theme tokens (BUILD_SPEC §6). Fluent's Griffel styles are unlayered, so they win over
+   Tailwind's layered preflight. */
+@import 'tailwindcss';
+
+html,
+body {
+  height: 100%;
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+}

@@ -1,0 +1,15 @@
+# Used when frontend/ is its own repository (the repo-root .gitignore covers the combined checkout).
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+
+# Local settings (.env.example is the template)
+.env
+.env.local
+.env.*.local
+
+*.log
+.DS_Store
