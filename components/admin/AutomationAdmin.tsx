@@ -40,6 +40,8 @@ import {
   ConfirmDelete,
   EditDialog,
   ListState,
+  OfficerPoolPicker,
+  reservedOfficers,
   SectionHeader,
   useAdminStyles,
   useAdminWrite,
@@ -64,7 +66,7 @@ const emptyRule = (priority: number): RuleForm => ({
   priority,
   isActive: true,
   conditions: [{ field: 'subject', op: 'contains', value: '' }],
-  action: { setFolderId: null, addCategoryIds: [], assignStrategy: null, assigneeId: null, redirectTo: null },
+  action: { setFolderId: null, addCategoryIds: [], assignStrategy: 'round_robin', assigneeId: null, redirectTo: null },
   roundRobinPool: [],
 });
 
@@ -78,6 +80,8 @@ export function RulesAdmin({ readOnly }: { readOnly: boolean }) {
   const [deleting, setDeleting] = useState<AssignmentRuleDto | null>(null);
   const list = rules.data ?? [];
 
+  const reservedBy = (exceptRuleId: string | null) => reservedOfficers(list, exceptRuleId);
+
   const save = async () => {
     if (!editing) return;
     const f = editing.form;
@@ -90,6 +94,8 @@ export function RulesAdmin({ readOnly }: { readOnly: boolean }) {
     };
     if (!body.name) throw new Error('Give the rule a name');
     if (body.conditions.length === 0) throw new Error('Add at least one condition with a value');
+    if (body.isActive && !body.action.assignStrategy)
+      throw new Error("A rule that's switched on must assign an officer or a pool of officers");
     if (body.action.assignStrategy === 'specific' && !body.action.assigneeId)
       throw new Error('Choose who to assign to');
     if (body.action.assignStrategy === 'round_robin' && body.roundRobinPool.length === 0) {
@@ -111,8 +117,16 @@ export function RulesAdmin({ readOnly }: { readOnly: boolean }) {
     }
     if (r.action.assignStrategy === 'specific')
       parts.push(<span key="a">Assign to {lookups.officerName(r.action.assigneeId)}</span>);
-    if (r.action.assignStrategy === 'round_robin')
-      parts.push(<span key="r">Officer pool ({r.roundRobinPool.length})</span>);
+    if (r.action.assignStrategy === 'round_robin') {
+      const reserved = reservedBy(r.id);
+      const skipped = r.roundRobinPool.filter((id) => reserved.has(id)).length;
+      parts.push(
+        <span key="r">
+          Officer pool ({r.roundRobinPool.length}
+          {skipped > 0 && `, ${skipped} skipped`})
+        </span>,
+      );
+    }
     if (r.action.redirectTo) parts.push(<span key="x">Redirect to {r.action.redirectTo}</span>);
     return <span className="flex flex-wrap items-center gap-x-2 gap-y-1">{parts}</span>;
   };
@@ -147,11 +161,12 @@ export function RulesAdmin({ readOnly }: { readOnly: boolean }) {
         </MessageBar>
       )}
       <ListState query={rules} empty={list.length === 0}>
-        <Table size="small" aria-label="Rules" style={{ minWidth: 820 }}>
+        <Table size="small" aria-label="Rules" style={{ minWidth: 920 }}>
           <TableHeader>
             <TableRow>
               <TableHeaderCell style={{ width: 70 }}>Priority</TableHeaderCell>
               <TableHeaderCell style={{ width: 200 }}>Name</TableHeaderCell>
+              <TableHeaderCell style={{ width: 130 }}>Status</TableHeaderCell>
               <TableHeaderCell>When</TableHeaderCell>
               <TableHeaderCell>Then</TableHeaderCell>
               <TableHeaderCell style={{ width: 96 }} />
@@ -161,15 +176,26 @@ export function RulesAdmin({ readOnly }: { readOnly: boolean }) {
             {list.map((r) => (
               <TableRow key={r.id} className={r.isActive ? undefined : styles.inactive}>
                 <TableCell>{r.priority}</TableCell>
+                <TableCell>{r.name}</TableCell>
                 <TableCell>
-                  <span className="flex items-center gap-2">
-                    {r.name}
-                    {!r.isActive && (
-                      <Badge appearance="outline" color="subtle" size="small">
-                        Off
-                      </Badge>
-                    )}
-                  </span>
+                  {!r.isActive ? (
+                    <Badge appearance="outline" color="subtle" className="whitespace-nowrap">
+                      Off
+                    </Badge>
+                  ) : !r.action.assignStrategy ? (
+                    <Badge
+                      appearance="tint"
+                      color="warning"
+                      className="whitespace-nowrap"
+                      title="Switched on but assigns nobody. Edit it to choose officers, or switch it off."
+                    >
+                      No assignee
+                    </Badge>
+                  ) : (
+                    <Badge appearance="tint" color="success" className="whitespace-nowrap">
+                      On
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell>
                   {r.conditions.map((c, i) => (
@@ -231,7 +257,27 @@ export function RulesAdmin({ readOnly }: { readOnly: boolean }) {
                   }}
                 />
               </Field>
-              <Switch label="On" checked={editing.form.isActive} onChange={(_, d) => set({ isActive: d.checked })} />
+              <Switch
+                label="On"
+                checked={editing.form.isActive}
+                onChange={(_, d) =>
+                  // A rule that's on must assign someone: default to a pool so the officer picker opens.
+                  setEditing(
+                    (e) =>
+                      e && {
+                        ...e,
+                        form: {
+                          ...e.form,
+                          isActive: d.checked,
+                          action:
+                            d.checked && !e.form.action.assignStrategy
+                              ? { ...e.form.action, assignStrategy: 'round_robin' }
+                              : e.form.action,
+                        },
+                      },
+                  )
+                }
+              />
             </div>
 
             <Text weight="semibold">When a new email arrives where…</Text>
@@ -321,7 +367,10 @@ export function RulesAdmin({ readOnly }: { readOnly: boolean }) {
                 </Dropdown>
               </Field>
             </div>
-            <Field label="Assign">
+            <Field
+              label="Assign"
+              hint={editing.form.isActive ? 'Switch the rule off to file or redirect without assigning.' : undefined}
+            >
               <RadioGroup
                 layout="horizontal"
                 value={editing.form.action.assignStrategy ?? 'none'}
@@ -329,13 +378,29 @@ export function RulesAdmin({ readOnly }: { readOnly: boolean }) {
                   setAction({ assignStrategy: d.value === 'none' ? null : (d.value as 'round_robin' | 'specific') })
                 }
               >
-                <Radio value="none" label="Don't assign" />
+                <Radio value="none" label="Don't assign" disabled={editing.form.isActive} />
                 <Radio value="specific" label="To one officer" />
                 <Radio value="round_robin" label="From a pool of officers" />
               </RadioGroup>
             </Field>
             {editing.form.action.assignStrategy === 'specific' && (
-              <Field label="Officer" required>
+              <Field
+                label="Officer"
+                required
+                hint={(() => {
+                  const id = editing.form.action.assigneeId;
+                  const pools = list.filter(
+                    (r) =>
+                      r.id !== editing.id &&
+                      r.action.assignStrategy === 'round_robin' &&
+                      id &&
+                      r.roundRobinPool.includes(id),
+                  );
+                  return editing.form.isActive && pools.length > 0
+                    ? `They'll be skipped in the pools of: ${pools.map((r) => r.name).join(', ')}.`
+                    : undefined;
+                })()}
+              >
                 <Dropdown
                   placeholder="Choose an officer"
                   value={lookups.officerName(editing.form.action.assigneeId) ?? ''}
@@ -356,21 +421,13 @@ export function RulesAdmin({ readOnly }: { readOnly: boolean }) {
                 required
                 hint={`Who gets each new matching enquiry follows the assignment method in Settings${
                   settings.data ? ` (now: ${ASSIGNMENT_METHODS[settings.data.assignmentMode].label})` : ''
-                }. Disabled accounts are skipped.`}
+                }. Disabled accounts and officers assigned directly by an active rule are skipped; the latter can't be added.`}
               >
-                <Dropdown
-                  multiselect
-                  placeholder="Choose officers"
-                  value={editing.form.roundRobinPool.map((id) => lookups.officerName(id)).join(', ')}
-                  selectedOptions={editing.form.roundRobinPool}
-                  onOptionSelect={(_, d) => set({ roundRobinPool: d.selectedOptions })}
-                >
-                  {lookups.officers.map((o) => (
-                    <Option key={o.id} value={o.id}>
-                      {o.displayName}
-                    </Option>
-                  ))}
-                </Dropdown>
+                <OfficerPoolPicker
+                  value={editing.form.roundRobinPool}
+                  onChange={(ids) => set({ roundRobinPool: ids })}
+                  reserved={reservedBy(editing.id)}
+                />
               </Field>
             )}
             <Field

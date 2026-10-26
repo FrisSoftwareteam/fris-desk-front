@@ -27,6 +27,7 @@ export function useSignOut() {
     await api.logout();
     // Forget the Microsoft account in this tab so the sign-in screen doesn't silently sign back in.
     await msal?.clearCache().catch(() => undefined);
+    msal?.setActiveAccount(null);
     queryClient.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' });
     // Refetches /me, which now answers 401, so <AuthGate> shows the sign-in screen.
     await queryClient.resetQueries({ queryKey: ['me'] });

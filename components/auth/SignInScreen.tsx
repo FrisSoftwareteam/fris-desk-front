@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMsal } from '@azure/msal-react';
-import { InteractionRequiredAuthError, InteractionStatus } from '@azure/msal-browser';
+import { CacheLookupPolicy, InteractionStatus } from '@azure/msal-browser';
 import { ROLES, type Role, type UserDto } from '@/lib/shared';
 import { api } from '@/lib/api';
 import { loginRequest } from '@/lib/msal';
@@ -96,21 +96,22 @@ function MicrosoftSignIn({ onSignedIn, onError }: SignInProps) {
   const attempted = useRef(false);
 
   useEffect(() => {
-    const account = accounts[0];
+    // Read the cache, not `accounts`: msal-react can still list an account cleared at sign-out.
+    const account = instance.getAllAccounts()[0];
     if (inProgress !== InteractionStatus.None || !account || attempted.current) return;
     attempted.current = true;
     setExchanging(true);
     instance
-      .acquireTokenSilent({ ...loginRequest, account })
-      .then((result) => api.createSession(result.accessToken))
-      .then(onSignedIn)
-      .catch((err: unknown) => {
-        // Expired Microsoft session: let the officer click the button again.
-        if (!(err instanceof InteractionRequiredAuthError)) {
-          onError(err instanceof Error ? err.message : 'Sign-in failed. Try again.');
-        }
-        setExchanging(false);
-      });
+      // Cached tokens only. Without this MSAL falls back to a hidden iframe, which can't complete here
+      // (X-Frame-Options: DENY, blocked third-party cookies) and fails after ~10 s with `timed_out`.
+      .acquireTokenSilent({ ...loginRequest, account, cacheLookupPolicy: CacheLookupPolicy.AccessTokenAndRefreshToken })
+      .then(
+        (result) => api.createSession(result.accessToken).then(onSignedIn),
+        // No usable Microsoft session: the officer signs in with the button.
+        () => undefined,
+      )
+      .catch((err: unknown) => onError(err instanceof Error ? err.message : 'Sign-in failed. Try again.'))
+      .finally(() => setExchanging(false));
   }, [accounts, inProgress, instance, onError, onSignedIn]);
 
   const busy = exchanging || inProgress !== InteractionStatus.None;
@@ -122,7 +123,8 @@ function MicrosoftSignIn({ onSignedIn, onError }: SignInProps) {
       onClick={() => {
         onError(undefined);
         attempted.current = false;
-        void instance.loginRedirect(loginRequest);
+        // Account picker, so someone who just signed out isn't silently signed back in as before.
+        void instance.loginRedirect({ ...loginRequest, prompt: 'select_account' });
       }}
     >
       {busy ? 'Signing you in…' : 'Sign in with Microsoft'}

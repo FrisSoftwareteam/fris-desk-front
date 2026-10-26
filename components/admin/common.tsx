@@ -10,16 +10,19 @@ import {
   DialogContent,
   DialogSurface,
   DialogTitle,
+  Dropdown,
   makeStyles,
   mergeClasses,
   MessageBar,
   MessageBarBody,
+  Option,
   Spinner,
   Text,
   tokens,
 } from '@fluentui/react-components';
 import { AddRegular } from '@fluentui/react-icons';
 import { api } from '@/lib/api';
+import type { AssignmentRuleDto } from '@/lib/shared';
 
 // Tables set a minWidth; on a phone they scroll sideways inside their card rather than squeezing
 // columns together.
@@ -248,4 +251,53 @@ export function useLookups() {
     officerName: (id: string | null) =>
       id ? (users.data?.find((u) => u.id === id)?.displayName ?? 'Inactive officer') : null,
   };
+}
+
+/** Officers named by an active "assign to one officer" rule (id → rule name); pools skip them. */
+export function reservedOfficers(rules: AssignmentRuleDto[], exceptRuleId: string | null): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const r of rules) {
+    if (r.id === exceptRuleId || !r.isActive || r.action.assignStrategy !== 'specific' || !r.action.assigneeId)
+      continue;
+    if (!out.has(r.action.assigneeId)) out.set(r.action.assigneeId, r.name);
+  }
+  return out;
+}
+
+/**
+ * Multi-select of officers for a pool. Officers reserved by a one-officer rule can't be added (one
+ * already in the pool stays selectable, so it can be removed).
+ */
+export function OfficerPoolPicker({
+  value,
+  onChange,
+  reserved,
+  disabled,
+}: {
+  value: string[];
+  onChange: (ids: string[]) => void;
+  reserved: Map<string, string>;
+  disabled?: boolean;
+}) {
+  const lookups = useLookups();
+  return (
+    <Dropdown
+      multiselect
+      disabled={disabled}
+      placeholder="Choose officers"
+      value={value.map((id) => lookups.officerName(id)).join(', ')}
+      selectedOptions={value}
+      onOptionSelect={(_, d) => onChange(d.selectedOptions)}
+    >
+      {lookups.officers.map((o) => {
+        const by = reserved.get(o.id);
+        const text = by ? `${o.displayName} · assigned by “${by}”` : o.displayName;
+        return (
+          <Option key={o.id} value={o.id} text={text} disabled={!!by && !value.includes(o.id)}>
+            {text}
+          </Option>
+        );
+      })}
+    </Dropdown>
+  );
 }

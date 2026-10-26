@@ -29,13 +29,20 @@ import {
   type TicketPriority,
 } from '@/lib/shared';
 import { api } from '@/lib/api';
-import { friendlyError, SectionHeader, useAdminStyles, useAdminWrite } from './common';
+import {
+  friendlyError,
+  OfficerPoolPicker,
+  reservedOfficers,
+  SectionHeader,
+  useAdminStyles,
+  useAdminWrite,
+} from './common';
 
 /** Labels and explanations for Settings → Assignment method (also shown in the rule editor). */
 export const ASSIGNMENT_METHODS: Record<AssignmentMode, { label: string; hint: string }> = {
   round_robin: {
     label: 'Round-robin',
-    hint: 'Officers in a rule’s pool take turns, whatever their current workload.',
+    hint: 'Officers in the pool take turns, whatever their current workload.',
   },
   least_loaded: {
     label: 'Least workload',
@@ -60,6 +67,7 @@ export function SettingsAdmin() {
   const settings = useQuery({ queryKey: ['settings'], queryFn: api.admin.settings });
   const templates = useQuery({ queryKey: ['templates', 'all'], queryFn: () => api.templates(null) });
   const mailbox = useQuery({ queryKey: ['mailbox'], queryFn: api.mailbox });
+  const rules = useQuery({ queryKey: ['assignment-rules'], queryFn: api.admin.rulesList });
   const write = useAdminWrite(['settings']);
   const [form, setForm] = useState<SettingsDto | null>(null);
   const [phrases, setPhrases] = useState('');
@@ -92,6 +100,13 @@ export function SettingsAdmin() {
     };
     if (body.autoAcknowledge.enabled && !body.autoAcknowledge.templateId) {
       setStatus({ intent: 'error', text: 'Choose the template to send before turning on auto-acknowledgement.' });
+      return;
+    }
+    if (body.roundRobinEnabled && body.defaultPool.length === 0) {
+      setStatus({
+        intent: 'error',
+        text: 'Choose the officers who get new enquiries before turning on automatic assignment.',
+      });
       return;
     }
     write.mutate(() => api.admin.patchSettings(body), {
@@ -152,10 +167,28 @@ export function SettingsAdmin() {
             Assignment
           </Text>
           <Switch
-            label="Assign new enquiries automatically from rules’ officer pools"
+            label="Assign new enquiries automatically"
             checked={form.roundRobinEnabled}
             onChange={(_, d) => setForm({ ...form, roundRobinEnabled: d.checked })}
           />
+          <Field
+            label="Officers"
+            required={form.roundRobinEnabled}
+            validationState={form.roundRobinEnabled && form.defaultPool.length === 0 ? 'error' : 'none'}
+            validationMessage={
+              form.roundRobinEnabled && form.defaultPool.length === 0
+                ? 'Choose who gets new enquiries, or switch automatic assignment off.'
+                : undefined
+            }
+            hint="New email enquiries that no rule assigns go to these officers, using the method below. Rules with their own officer pool use that pool instead. Officers assigned directly by an active rule are skipped and can't be added."
+          >
+            <OfficerPoolPicker
+              value={form.defaultPool}
+              onChange={(ids) => setForm({ ...form, defaultPool: ids })}
+              reserved={reservedOfficers(rules.data ?? [], null)}
+              disabled={!form.roundRobinEnabled}
+            />
+          </Field>
           <Field
             label="Assignment method"
             hint={`${ASSIGNMENT_METHODS[form.assignmentMode].hint} Open means assigned, in progress, awaiting the shareholder or escalated.`}
