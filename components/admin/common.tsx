@@ -253,30 +253,14 @@ export function useLookups() {
   };
 }
 
-/** Officers named by an active "assign to one officer" rule (id → rule name); pools skip them. */
-export function reservedOfficers(rules: AssignmentRuleDto[], exceptRuleId: string | null): Map<string, string> {
-  const out = new Map<string, string>();
-  for (const r of rules) {
-    if (r.id === exceptRuleId || !r.isActive || r.action.assignStrategy !== 'specific' || !r.action.assigneeId)
-      continue;
-    if (!out.has(r.action.assigneeId)) out.set(r.action.assigneeId, r.name);
-  }
-  return out;
-}
-
-/**
- * Multi-select of officers for a pool. Officers reserved by a one-officer rule can't be added (one
- * already in the pool stays selectable, so it can be removed).
- */
+/** Multi-select of officers for a pool. An officer can be in any number of pools and rules. */
 export function OfficerPoolPicker({
   value,
   onChange,
-  reserved,
   disabled,
 }: {
   value: string[];
   onChange: (ids: string[]) => void;
-  reserved: Map<string, string>;
   disabled?: boolean;
 }) {
   const lookups = useLookups();
@@ -289,15 +273,11 @@ export function OfficerPoolPicker({
       selectedOptions={value}
       onOptionSelect={(_, d) => onChange(d.selectedOptions)}
     >
-      {lookups.officers.map((o) => {
-        const by = reserved.get(o.id);
-        const text = by ? `${o.displayName} · assigned by “${by}”` : o.displayName;
-        return (
-          <Option key={o.id} value={o.id} text={text} disabled={!!by && !value.includes(o.id)}>
-            {text}
-          </Option>
-        );
-      })}
+      {lookups.officers.map((o) => (
+        <Option key={o.id} value={o.id}>
+          {o.displayName}
+        </Option>
+      ))}
     </Dropdown>
   );
 }

@@ -29,14 +29,7 @@ import {
   type TicketPriority,
 } from '@/lib/shared';
 import { api } from '@/lib/api';
-import {
-  friendlyError,
-  OfficerPoolPicker,
-  reservedOfficers,
-  SectionHeader,
-  useAdminStyles,
-  useAdminWrite,
-} from './common';
+import { friendlyError, OfficerPoolPicker, SectionHeader, useAdminStyles, useAdminWrite } from './common';
 
 /** Labels and explanations for Settings → Assignment method (also shown in the rule editor). */
 export const ASSIGNMENT_METHODS: Record<AssignmentMode, { label: string; hint: string }> = {
@@ -67,7 +60,6 @@ export function SettingsAdmin() {
   const settings = useQuery({ queryKey: ['settings'], queryFn: api.admin.settings });
   const templates = useQuery({ queryKey: ['templates', 'all'], queryFn: () => api.templates(null) });
   const mailbox = useQuery({ queryKey: ['mailbox'], queryFn: api.mailbox });
-  const rules = useQuery({ queryKey: ['assignment-rules'], queryFn: api.admin.rulesList });
   const write = useAdminWrite(['settings']);
   const [form, setForm] = useState<SettingsDto | null>(null);
   const [phrases, setPhrases] = useState('');
@@ -180,12 +172,11 @@ export function SettingsAdmin() {
                 ? 'Choose who gets new enquiries, or switch automatic assignment off.'
                 : undefined
             }
-            hint="New email enquiries that no rule assigns go to these officers, using the method below. Rules with their own officer pool use that pool instead. Officers assigned directly by an active rule are skipped and can't be added."
+            hint="New email enquiries that no rule assigns go to these officers, using the method below. Rules with their own officer pool use that pool instead."
           >
             <OfficerPoolPicker
               value={form.defaultPool}
               onChange={(ids) => setForm({ ...form, defaultPool: ids })}
-              reserved={reservedOfficers(rules.data ?? [], null)}
               disabled={!form.roundRobinEnabled}
             />
           </Field>

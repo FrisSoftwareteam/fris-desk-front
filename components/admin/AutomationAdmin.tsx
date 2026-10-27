@@ -41,7 +41,6 @@ import {
   EditDialog,
   ListState,
   OfficerPoolPicker,
-  reservedOfficers,
   SectionHeader,
   useAdminStyles,
   useAdminWrite,
@@ -80,8 +79,6 @@ export function RulesAdmin({ readOnly }: { readOnly: boolean }) {
   const [deleting, setDeleting] = useState<AssignmentRuleDto | null>(null);
   const list = rules.data ?? [];
 
-  const reservedBy = (exceptRuleId: string | null) => reservedOfficers(list, exceptRuleId);
-
   const save = async () => {
     if (!editing) return;
     const f = editing.form;
@@ -117,16 +114,8 @@ export function RulesAdmin({ readOnly }: { readOnly: boolean }) {
     }
     if (r.action.assignStrategy === 'specific')
       parts.push(<span key="a">Assign to {lookups.officerName(r.action.assigneeId)}</span>);
-    if (r.action.assignStrategy === 'round_robin') {
-      const reserved = reservedBy(r.id);
-      const skipped = r.roundRobinPool.filter((id) => reserved.has(id)).length;
-      parts.push(
-        <span key="r">
-          Officer pool ({r.roundRobinPool.length}
-          {skipped > 0 && `, ${skipped} skipped`})
-        </span>,
-      );
-    }
+    if (r.action.assignStrategy === 'round_robin')
+      parts.push(<span key="r">Officer pool ({r.roundRobinPool.length})</span>);
     if (r.action.redirectTo) parts.push(<span key="x">Redirect to {r.action.redirectTo}</span>);
     return <span className="flex flex-wrap items-center gap-x-2 gap-y-1">{parts}</span>;
   };
@@ -384,23 +373,7 @@ export function RulesAdmin({ readOnly }: { readOnly: boolean }) {
               </RadioGroup>
             </Field>
             {editing.form.action.assignStrategy === 'specific' && (
-              <Field
-                label="Officer"
-                required
-                hint={(() => {
-                  const id = editing.form.action.assigneeId;
-                  const pools = list.filter(
-                    (r) =>
-                      r.id !== editing.id &&
-                      r.action.assignStrategy === 'round_robin' &&
-                      id &&
-                      r.roundRobinPool.includes(id),
-                  );
-                  return editing.form.isActive && pools.length > 0
-                    ? `They'll be skipped in the pools of: ${pools.map((r) => r.name).join(', ')}.`
-                    : undefined;
-                })()}
-              >
+              <Field label="Officer" required hint="The same officer can be named by several rules and be in pools.">
                 <Dropdown
                   placeholder="Choose an officer"
                   value={lookups.officerName(editing.form.action.assigneeId) ?? ''}
@@ -421,12 +394,11 @@ export function RulesAdmin({ readOnly }: { readOnly: boolean }) {
                 required
                 hint={`Who gets each new matching enquiry follows the assignment method in Settings${
                   settings.data ? ` (now: ${ASSIGNMENT_METHODS[settings.data.assignmentMode].label})` : ''
-                }. Disabled accounts and officers assigned directly by an active rule are skipped; the latter can't be added.`}
+                }. Disabled accounts are skipped.`}
               >
                 <OfficerPoolPicker
                   value={editing.form.roundRobinPool}
                   onChange={(ids) => set({ roundRobinPool: ids })}
-                  reserved={reservedBy(editing.id)}
                 />
               </Field>
             )}
