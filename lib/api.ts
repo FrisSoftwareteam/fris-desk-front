@@ -1,4 +1,6 @@
 import {
+  type ShareholderDto,
+  type ShareholderInput,
   CSRF_HEADER,
   type AdminUserCreateDto,
   type AdminUserDto,
@@ -16,6 +18,7 @@ import {
   type EscalateDto,
   type ReportQuery,
   type ReportSummaryDto,
+  type OutlookMatchDto,
   type SettingsDto,
   type SlaPolicyDto,
   type AttachmentDto,
@@ -268,6 +271,18 @@ export const api = {
   escalate: (ticketId: string, body: EscalateDto) =>
     request<TicketDetailDto>(`/tickets/${encodeURIComponent(ticketId)}/escalate`, { method: 'POST', body }),
 
+  // Saved shareholder records (G-01.1). Officers add and edit; admins delete.
+  shareholders: {
+    ...crud<ShareholderDto, ShareholderInput>('/shareholders', 'PATCH'),
+    search: (q: string) => request<ShareholderDto[]>(`/shareholders?q=${encodeURIComponent(q)}`),
+    /** The saved record for this email, or null if none is saved yet. */
+    byEmail: (email: string) =>
+      request<ShareholderDto>(`/shareholders/by-email/${encodeURIComponent(email)}`).catch((err: unknown) => {
+        if (err instanceof ApiError && err.status === 404) return null;
+        throw err;
+      }),
+  },
+
   // Reports (Agent Activity Dashboard).
   reportSummary: (q: ReportQuery) => request<ReportSummaryDto>(`/reports/summary?${reportQs(q)}`),
   reportAgents: (q: ReportQuery) => request<AgentReportDto>(`/reports/agents?${reportQs(q)}`),
@@ -294,6 +309,8 @@ export const api = {
     removeUser: (id: string) => request<void>(`/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     settings: () => request<SettingsDto>('/settings'),
     patchSettings: (patch: Partial<SettingsDto>) => request<SettingsDto>('/settings', { method: 'PATCH', body: patch }),
+    outlookMatch: () => request<OutlookMatchDto>('/settings/outlook-match'),
+    startOutlookMatch: () => request<OutlookMatchDto>('/settings/outlook-match', { method: 'POST' }),
     folders: crud<FolderDto, Pick<FolderDto, 'name' | 'order' | 'parentId'>>('/folders', 'PATCH'),
     categories: crud<CategoryDto, Omit<CategoryDto, 'id'>>('/categories', 'PATCH'),
     templates: crud<TemplateDto, TemplateInput>('/templates', 'PATCH'),

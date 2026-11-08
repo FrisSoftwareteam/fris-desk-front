@@ -22,6 +22,7 @@ import {
 } from '@fluentui/react-components';
 import {
   DataBarVerticalRegular,
+  PeopleRegular,
   MailInboxRegular,
   QuestionCircleRegular,
   SettingsRegular,
@@ -123,9 +124,14 @@ const useStyles = makeStyles({
 });
 
 /** The app open in the rail, like Outlook's Mail / Calendar switcher. */
-export type ShellApp = 'mail' | 'dashboard' | 'admin';
+export type ShellApp = 'mail' | 'dashboard' | 'shareholders' | 'admin';
 
-const APP_PATH: Record<ShellApp, string> = { mail: '/', dashboard: '/dashboard', admin: '/admin' };
+const APP_PATH: Record<ShellApp, string> = {
+  mail: '/',
+  dashboard: '/dashboard',
+  shareholders: '/shareholders',
+  admin: '/admin',
+};
 
 interface OutlookShellProps {
   app?: ShellApp;
@@ -233,6 +239,11 @@ export function OutlookShell({ app = 'mail', search, children }: OutlookShellPro
                       Dashboard
                     </MenuItem>
                   )}
+                  {app !== 'shareholders' && (
+                    <MenuItem icon={<PeopleRegular />} onClick={() => router.push('/shareholders')}>
+                      Shareholders
+                    </MenuItem>
+                  )}
                   {canAdmin && app !== 'admin' && (
                     <MenuItem icon={<SettingsRegular />} onClick={() => router.push('/admin')}>
                       Admin
@@ -254,6 +265,7 @@ export function OutlookShell({ app = 'mail', search, children }: OutlookShellPro
       <nav className={styles.rail} aria-label="Apps">
         {railButton('mail', 'Enquiries', <MailInboxRegular fontSize={22} />)}
         {railButton('dashboard', 'Dashboard', <DataBarVerticalRegular fontSize={22} />)}
+        {railButton('shareholders', 'Shareholders', <PeopleRegular fontSize={22} />)}
         {canAdmin && railButton('admin', 'Admin', <SettingsRegular fontSize={22} />)}
       </nav>
 

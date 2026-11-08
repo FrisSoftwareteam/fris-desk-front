@@ -47,6 +47,10 @@ export const queryKeys = {
   statusReasons: ['status-reasons'] as const,
   attachmentPreview: (id: string) => ['attachment-preview', id] as const,
   attachmentBlob: (id: string) => ['attachment-blob', id] as const,
+  /** Every shareholder-record query starts with this, so one invalidate refreshes them all. */
+  shareholders: ['shareholders'] as const,
+  shareholderByEmail: (email: string) => ['shareholders', 'by-email', email.toLowerCase()] as const,
+  shareholderSearch: (q: string) => ['shareholders', 'search', q] as const,
 };
 
 // Lookups and actions only. The mailbox sync status and unread counts change every few seconds, so
@@ -227,17 +231,7 @@ export function MailboxProvider({ children }: { children: ReactNode }) {
             : [...ticket.categoryIds, categoryId],
         }),
     }),
-    [
-      client,
-      folderList,
-      categoryList,
-      officerList,
-      categoryById,
-      reasonList,
-      statusReasonById,
-      updateTicket,
-      runBulk,
-    ],
+    [client, folderList, categoryList, officerList, categoryById, reasonList, statusReasonById, updateTicket, runBulk],
   );
 
   return <MailboxContext.Provider value={value}>{children}</MailboxContext.Provider>;

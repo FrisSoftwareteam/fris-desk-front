@@ -24,6 +24,7 @@ import {
   TableRow,
   Text,
   Textarea,
+  tokens,
 } from '@fluentui/react-components';
 import { DeleteRegular, EditRegular, PeopleTeamRegular, PersonRegular } from '@fluentui/react-icons';
 import { ROLES, type AdminUserDto, type DepartmentDto, type DepartmentType, type Role } from '@/lib/shared';
@@ -57,9 +58,10 @@ export function DepartmentsAdmin() {
 
   const save = async () => {
     if (!editing) return;
-    const body = { ...editing.form, name: editing.form.name.trim(), email: editing.form.email.trim() };
+    const body = { ...editing.form, name: editing.form.name.trim(), email: editing.form.email.trim(), cc: editing.form.cc.trim() };
     if (!body.name) throw new Error('Enter a name');
     if (!EMAIL.test(body.email)) throw new Error('Enter a valid email address');
+    if (body.cc && !EMAIL.test(body.cc)) throw new Error('Enter a valid CC address');
     await write.mutateAsync(() =>
       editing.id ? api.admin.departments.update(editing.id, body) : api.admin.departments.create(body),
     );
@@ -77,6 +79,7 @@ export function DepartmentsAdmin() {
             form: {
               name: '',
               email: '',
+              cc: '',
               type: 'department',
               description: '',
               order: (list.at(-1)?.order ?? 0) + 1,
@@ -122,7 +125,10 @@ export function DepartmentsAdmin() {
                     )}
                   </span>
                 </TableCell>
-                <TableCell>{d.email}</TableCell>
+                <TableCell>
+                  {d.email}
+                  {d.cc && <div style={{ color: tokens.colorNeutralForeground3 }}>cc {d.cc}</div>}
+                </TableCell>
                 <TableCell>{d.description || '—'}</TableCell>
                 <TableCell>{d.order}</TableCell>
                 <TableCell>
@@ -183,6 +189,13 @@ export function DepartmentsAdmin() {
                 type="email"
                 value={editing.form.email}
                 onChange={(_, d) => setEditing({ ...editing, form: { ...editing.form, email: d.value } })}
+              />
+            </Field>
+            <Field label="CC" hint="Optional. Copied on every escalation here.">
+              <Input
+                type="email"
+                value={editing.form.cc}
+                onChange={(_, d) => setEditing({ ...editing, form: { ...editing.form, cc: d.value } })}
               />
             </Field>
             <Field label="When to escalate here" hint="Shown as a hint in the Escalate menu.">
