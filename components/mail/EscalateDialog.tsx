@@ -131,7 +131,7 @@ export function EscalateDialog({
               </Field>
               <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
                 The whole thread is forwarded from the shared mailbox
-                {department ? ` to ${department.email}` : ''}, and the enquiry is marked Escalated.
+                {department ? ` to ${department.email}${department.cc ? ` (cc ${department.cc})` : ''}` : ''}, and the enquiry is marked Escalated.
               </Text>
             </DialogContent>
             <DialogActions>

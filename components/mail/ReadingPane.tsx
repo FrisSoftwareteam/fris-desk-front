@@ -68,6 +68,7 @@ import { MessageCard } from './MessageCard';
 import { PendingReplyCard } from './PendingReplyCard';
 import { useNotify } from '@/lib/notify';
 import { TicketHistory } from './TicketHistory';
+import { ShareholderButton } from '@/components/shareholders/ShareholderButton';
 import { SlaChip } from './SlaChip';
 import { queryKeys, useMailbox, useMailboxStatus, useTicket } from './MailboxContext';
 import {
@@ -357,6 +358,7 @@ export function ReadingPane({ ticketId, onBack, onClosed }: ReadingPaneProps) {
               <a href={`tel:${ticket.contact.phone.replace(/[^\d+]/g, '')}`}>{ticket.contact.phone}</a>
             </Text>
           )}
+          <ShareholderButton contact={ticket.contact} />
         </div>
 
         {!ticket.deletedAt && (

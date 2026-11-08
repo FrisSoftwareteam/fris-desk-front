@@ -29,7 +29,7 @@ import {
   type TicketPriority,
 } from '@/lib/shared';
 import { api } from '@/lib/api';
-import { friendlyError, OfficerPoolPicker, SectionHeader, useAdminStyles, useAdminWrite } from './common';
+import { EditDialog, friendlyError, OfficerPoolPicker, SectionHeader, useAdminStyles, useAdminWrite } from './common';
 
 /** Labels and explanations for Settings → Assignment method (also shown in the rule editor). */
 export const ASSIGNMENT_METHODS: Record<AssignmentMode, { label: string; hint: string }> = {
@@ -325,6 +325,110 @@ export function SettingsAdmin() {
           </Button>
         </div>
       </div>
+      <OutlookMatchCard />
     </>
+  );
+}
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/**
+ * One-off switchover from Outlook: officers used unread Inbox mail as their to-do list, so this
+ * makes the app's active enquiries match it. Shows what would change before anything happens.
+ */
+function OutlookMatchCard() {
+  const styles = useAdminStyles();
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const match = useQuery({
+    queryKey: ['outlook-match'],
+    queryFn: api.admin.outlookMatch,
+    enabled: false,
+    refetchInterval: (q) => (q.state.data?.running ? 3000 : false),
+  });
+  const data = match.data;
+  const nothingToDo = data && !data.toResolve && !data.toReopen && !data.toImport;
+  const last = data?.lastResult;
+
+  const apply = async () => {
+    setError(null);
+    try {
+      await api.admin.startOutlookMatch();
+      setConfirming(false);
+      await match.refetch();
+    } catch (err) {
+      setError(friendlyError(err));
+      setConfirming(false);
+    }
+  };
+
+  return (
+    <div className={mergeClasses(styles.card, styles.padded, 'mt-4 flex max-w-3xl flex-col gap-3')}>
+      <Text weight="semibold" size={400}>
+        Match Outlook unread mail
+      </Text>
+      <Text size={200} className={styles.muted}>
+        For switching over from Outlook. Enquiries whose emails are all read in the shared Inbox are resolved; enquiries
+        with unread mail stay open (resolved ones are reopened); unread mail the app hasn&apos;t imported yet is
+        imported without sending an acknowledgement. Outlook itself is not changed.
+      </Text>
+      {data?.running && (
+        <MessageBar intent="info">
+          <MessageBarBody>
+            <Spinner size="tiny" className="mr-2 inline-flex" />
+            Matching… this can take a few minutes.
+          </MessageBarBody>
+        </MessageBar>
+      )}
+      {data && !data.running && (
+        <MessageBar intent={nothingToDo ? 'success' : 'warning'}>
+          <MessageBarBody>
+            {nothingToDo
+              ? 'The app already matches Outlook.'
+              : `${plural(data.toResolve, 'enquiry', 'enquiries')} will be resolved, ${data.toReopen} reopened and ${plural(data.toImport, 'email')} imported.`}
+          </MessageBarBody>
+        </MessageBar>
+      )}
+      {last && !data?.running && (
+        <Text size={200} className={styles.muted}>
+          Last run {new Date(last.finishedAt).toLocaleString()}: {last.resolved} resolved, {last.reopened} reopened,{' '}
+          {last.imported} imported{last.failed ? `, ${last.failed} failed (see the server log)` : ''}
+          {last.error ? `. Stopped: ${last.error}` : '.'}
+        </Text>
+      )}
+      {(error || match.error) && (
+        <MessageBar intent="error">
+          <MessageBarBody>{error ?? friendlyError(match.error)}</MessageBarBody>
+        </MessageBar>
+      )}
+      <div className="flex gap-2">
+        <Button
+          onClick={() => void match.refetch()}
+          disabled={match.isFetching || data?.running}
+          icon={match.isFetching && !data?.running ? <Spinner size="tiny" /> : undefined}
+        >
+          Check
+        </Button>
+        <Button
+          appearance="primary"
+          onClick={() => setConfirming(true)}
+          disabled={!data || data.running || nothingToDo || match.isFetching}
+        >
+          Apply
+        </Button>
+      </div>
+      <EditDialog
+        open={confirming}
+        title="Match Outlook unread mail?"
+        onClose={() => setConfirming(false)}
+        onSave={apply}
+        saveLabel="Apply"
+      >
+        <Text>
+          {data &&
+            `${plural(data.toResolve, 'enquiry', 'enquiries')} will be resolved, ${data.toReopen} reopened and ${plural(data.toImport, 'email')} imported. No email is sent to shareholders. Each change appears in the enquiry's history.`}
+        </Text>
+      </EditDialog>
+    </div>
   );
 }
