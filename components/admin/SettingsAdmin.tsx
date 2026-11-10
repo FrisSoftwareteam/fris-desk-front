@@ -54,7 +54,7 @@ function daysLabel(days: number | null, none = ''): string {
   return `${days} days`;
 }
 
-/** Admin → Settings: auto-acknowledgement, round-robin, default priority, external-sender tag text, retention. */
+/** Admin → Settings: auto-acknowledgement, resolution email, round-robin, default priority, external-sender tag text, retention. */
 export function SettingsAdmin() {
   const styles = useAdminStyles();
   const settings = useQuery({ queryKey: ['settings'], queryFn: api.admin.settings });
@@ -94,6 +94,10 @@ export function SettingsAdmin() {
       setStatus({ intent: 'error', text: 'Choose the template to send before turning on auto-acknowledgement.' });
       return;
     }
+    if (body.resolutionEmail.enabled && !body.resolutionEmail.templateId) {
+      setStatus({ intent: 'error', text: 'Choose the template to send before turning on the resolution email.' });
+      return;
+    }
     if (body.roundRobinEnabled && body.defaultPool.length === 0) {
       setStatus({
         intent: 'error',
@@ -113,6 +117,7 @@ export function SettingsAdmin() {
   };
 
   const templateName = templates.data?.find((t) => t.id === form.autoAcknowledge.templateId)?.name;
+  const resolutionTemplateName = templates.data?.find((t) => t.id === form.resolutionEmail.templateId)?.name;
   const allowlist = mailbox.data?.sendAllowlist;
 
   return (
@@ -152,6 +157,47 @@ export function SettingsAdmin() {
               Test mode: this server only sends email to {allowlist.join(', ')}.
             </Text>
           )}
+        </section>
+
+        <section className="flex flex-col gap-3">
+          <Text weight="semibold" size={400}>
+            Resolution email
+          </Text>
+          <Switch
+            label="Email the shareholder when their enquiry is resolved, asking them to confirm they're satisfied"
+            checked={form.resolutionEmail.enabled}
+            onChange={(_, d) => setForm({ ...form, resolutionEmail: { ...form.resolutionEmail, enabled: d.checked } })}
+          />
+          <Field
+            label="Template to send"
+            hint="Supervisors and admins can edit the wording under Templates. A reply from the shareholder reopens the enquiry."
+          >
+            <Dropdown
+              placeholder="Choose a template"
+              value={resolutionTemplateName ?? ''}
+              selectedOptions={form.resolutionEmail.templateId ? [form.resolutionEmail.templateId] : []}
+              onOptionSelect={(_, d) =>
+                setForm({ ...form, resolutionEmail: { ...form.resolutionEmail, templateId: d.optionValue ?? null } })
+              }
+            >
+              {(templates.data ?? []).map((t) => (
+                <Option key={t.id} value={t.id}>
+                  {t.name}
+                </Option>
+              ))}
+            </Dropdown>
+          </Field>
+        </section>
+
+        <section className="flex flex-col gap-3">
+          <Text weight="semibold" size={400}>
+            Shared mailbox
+          </Text>
+          <Switch
+            label="Mark an enquiry's emails as read in the shared mailbox when it's resolved"
+            checked={form.markReadOnResolve}
+            onChange={(_, d) => setForm({ ...form, markReadOnResolve: d.checked })}
+          />
         </section>
 
         <section className="flex flex-col gap-3">
