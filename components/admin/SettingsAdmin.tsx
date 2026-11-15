@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button,
   Dropdown,
   Field,
+  Input,
   MessageBar,
   MessageBarBody,
   mergeClasses,
@@ -372,6 +373,7 @@ export function SettingsAdmin() {
         </div>
       </div>
       <OutlookMatchCard />
+      <ClearDataCard />
     </>
   );
 }
@@ -474,6 +476,67 @@ function OutlookMatchCard() {
           {data &&
             `${plural(data.toResolve, 'enquiry', 'enquiries')} will be resolved, ${data.toReopen} reopened and ${plural(data.toImport, 'email')} imported. No email is sent to shareholders. Each change appears in the enquiry's history.`}
         </Text>
+      </EditDialog>
+    </div>
+  );
+}
+
+/** Wipes test data before go-live. The admin must type DELETE; nothing can bring the data back. */
+function ClearDataCard() {
+  const styles = useAdminStyles();
+  const queryClient = useQueryClient();
+  const [confirming, setConfirming] = useState(false);
+  const [typed, setTyped] = useState('');
+  const [result, setResult] = useState<Record<string, number> | null>(null);
+
+  const clear = async () => {
+    if (typed !== 'DELETE') throw new Error('Type DELETE to confirm.');
+    setResult(await api.admin.clearData());
+    await queryClient.invalidateQueries();
+  };
+
+  return (
+    <div className={mergeClasses(styles.card, styles.padded, 'mt-4 flex max-w-3xl flex-col gap-3')}>
+      <Text weight="semibold" size={400}>
+        Clear all enquiry data
+      </Text>
+      <Text size={200} className={styles.muted}>
+        Permanently deletes every enquiry, email, draft, attachment copy, notification, pending approval, shareholder
+        record and the activity log, and restarts enquiry numbers. Users, folders, categories, rules, SLA policies,
+        templates, departments and settings stay. Old mail is not imported again; the shared mailbox is not changed.
+      </Text>
+      {result && (
+        <MessageBar intent="success">
+          <MessageBarBody>
+            Cleared {plural(result.tickets ?? 0, 'enquiry', 'enquiries')} and {plural(result.messages ?? 0, 'email')}.
+          </MessageBarBody>
+        </MessageBar>
+      )}
+      <div>
+        <Button
+          appearance="primary"
+          style={{ backgroundColor: 'var(--colorStatusDangerBackground3)' }}
+          onClick={() => {
+            setTyped('');
+            setConfirming(true);
+          }}
+        >
+          Clear all enquiry data
+        </Button>
+      </div>
+      <EditDialog
+        open={confirming}
+        title="Clear all enquiry data?"
+        onClose={() => setConfirming(false)}
+        onSave={clear}
+        saveLabel="Delete everything"
+      >
+        <div className="flex flex-col gap-3">
+          <Text>This cannot be undone. Type DELETE to confirm.</Text>
+          <Field label="Confirmation">
+            <Input value={typed} onChange={(_, d) => setTyped(d.value)} autoComplete="off" />
+          </Field>
+        </div>
       </EditDialog>
     </div>
   );
