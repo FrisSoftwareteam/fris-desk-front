@@ -372,6 +372,7 @@ export function SettingsAdmin() {
           </Button>
         </div>
       </div>
+      {settings.data && <AssignBacklogCard saved={settings.data} />}
       <OutlookMatchCard />
       <ClearDataCard />
     </>
@@ -379,6 +380,87 @@ export function SettingsAdmin() {
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/**
+ * Shares out open enquiries nobody owns (e.g. those already waiting at go-live) with the saved
+ * assignment settings: routing rules first, then the default pool, using the chosen method.
+ */
+function AssignBacklogCard({ saved }: { saved: SettingsDto }) {
+  const styles = useAdminStyles();
+  const queryClient = useQueryClient();
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ assigned: number; skipped: number; remaining: number } | null>(null);
+  const backlog = useQuery({ queryKey: ['unassigned-backlog'], queryFn: api.admin.unassignedBacklog });
+  const count = backlog.data?.count ?? 0;
+  const ready = saved.roundRobinEnabled && saved.defaultPool.length > 0;
+  const method = ASSIGNMENT_METHODS[saved.assignmentMode].label.toLowerCase();
+
+  const apply = async () => {
+    setError(null);
+    try {
+      setResult(await api.admin.assignBacklog());
+      // Counts, lists and officer workloads all change.
+      await queryClient.invalidateQueries();
+    } catch (err) {
+      setError(friendlyError(err));
+    }
+    setConfirming(false);
+  };
+
+  return (
+    <div className={mergeClasses(styles.card, styles.padded, 'mt-4 flex max-w-3xl flex-col gap-3')}>
+      <Text weight="semibold" size={400}>
+        Assign unassigned enquiries
+      </Text>
+      <Text size={200} className={styles.muted}>
+        Open enquiries that nobody owns are shared out the way new email is: routing rules first, then the default
+        officers, using {method}. Use this once officers are set up, for example at go-live. Folders and categories are
+        not changed and no email is sent.
+      </Text>
+      {!ready && (
+        <MessageBar intent="warning">
+          <MessageBarBody>Turn on automatic assignment and choose the officers above, then save.</MessageBarBody>
+        </MessageBar>
+      )}
+      {backlog.data && (
+        <MessageBar intent={count ? 'info' : 'success'}>
+          <MessageBarBody>
+            {count ? `${plural(count, 'open enquiry', 'open enquiries')} unassigned.` : 'Every open enquiry is assigned.'}
+          </MessageBarBody>
+        </MessageBar>
+      )}
+      {result && (
+        <Text size={200} className={styles.muted}>
+          {plural(result.assigned, 'enquiry', 'enquiries')} assigned
+          {result.skipped ? `, ${result.skipped} left unassigned (no officer available)` : ''}
+          {result.remaining > result.skipped ? `. ${result.remaining - result.skipped} more to do: click again.` : '.'}
+        </Text>
+      )}
+      {(error || backlog.error) && (
+        <MessageBar intent="error">
+          <MessageBarBody>{error ?? friendlyError(backlog.error)}</MessageBarBody>
+        </MessageBar>
+      )}
+      <div className="flex gap-2">
+        <Button appearance="primary" onClick={() => setConfirming(true)} disabled={!ready || !count}>
+          Assign now
+        </Button>
+      </div>
+      <EditDialog
+        open={confirming}
+        title="Assign unassigned enquiries?"
+        onClose={() => setConfirming(false)}
+        onSave={apply}
+        saveLabel="Assign"
+      >
+        <Text>
+          {`Up to 200 of the ${plural(count, 'unassigned open enquiry', 'unassigned open enquiries')} will be assigned using ${method}, oldest first. Each assignment appears in the enquiry's history.`}
+        </Text>
+      </EditDialog>
+    </div>
+  );
+}
 
 /**
  * One-off switchover from Outlook: officers used unread Inbox mail as their to-do list, so this

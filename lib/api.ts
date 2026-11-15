@@ -311,6 +311,9 @@ export const api = {
     patchSettings: (patch: Partial<SettingsDto>) => request<SettingsDto>('/settings', { method: 'PATCH', body: patch }),
     outlookMatch: () => request<OutlookMatchDto>('/settings/outlook-match'),
     startOutlookMatch: () => request<OutlookMatchDto>('/settings/outlook-match', { method: 'POST' }),
+    unassignedBacklog: () => request<{ count: number }>('/settings/unassigned-backlog'),
+    assignBacklog: () =>
+      request<{ assigned: number; skipped: number; remaining: number }>('/settings/assign-backlog', { method: 'POST' }),
     /** Irreversible: wipes all enquiries, emails, shareholders and the audit log; keeps users and setup. */
     clearData: () =>
       request<Record<string, number>>('/settings/clear-data', { method: 'POST', body: { confirm: 'DELETE' } }),
