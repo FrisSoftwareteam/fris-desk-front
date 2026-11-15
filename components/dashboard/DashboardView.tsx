@@ -123,6 +123,10 @@ export function DashboardView() {
       Number(bh.start.slice(3))
     : 540;
   const error = summary.error ?? agents.error;
+  // One officer in scope: "received" (by email arrival) misleads, since officers are assigned enquiries,
+  // often older backlog — show their assignments in the period instead.
+  const oneOfficer = Boolean(agentId) || !isTeamView;
+  const officerName = agentId ? staff.data?.find((s) => s.id === agentId)?.displayName : undefined;
 
   return (
     <div className={styles.root}>
@@ -216,9 +220,22 @@ export function DashboardView() {
           </MessageBar>
         )}
 
+        {officerName && (
+          <Text size={300} weight="semibold">
+            Figures for {officerName}
+          </Text>
+        )}
         <div className={styles.tiles}>
-          <Tile label="Enquiries received" value={summary.data?.received} hint={originHint(summary.data?.byOrigin)} />
-          <Tile label="Open now" value={summary.data?.openNow} hint="Not yet resolved" />
+          {oneOfficer ? (
+            <Tile label="Assigned" value={report?.agents[0]?.assigned} hint="Given to them in this period" />
+          ) : (
+            <Tile label="Enquiries received" value={summary.data?.received} hint={originHint(summary.data?.byOrigin)} />
+          )}
+          <Tile
+            label="Open now"
+            value={summary.data?.openNow}
+            hint={oneOfficer ? 'Assigned to them, not yet resolved' : 'Not yet resolved'}
+          />
           <Tile label="Resolved" value={summary.data?.resolved} hint="In this period" />
           <Tile
             label="Overdue now"

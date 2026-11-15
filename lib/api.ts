@@ -311,6 +311,9 @@ export const api = {
     patchSettings: (patch: Partial<SettingsDto>) => request<SettingsDto>('/settings', { method: 'PATCH', body: patch }),
     outlookMatch: () => request<OutlookMatchDto>('/settings/outlook-match'),
     startOutlookMatch: () => request<OutlookMatchDto>('/settings/outlook-match', { method: 'POST' }),
+    /** Irreversible: wipes all enquiries, emails, shareholders and the audit log; keeps users and setup. */
+    clearData: () =>
+      request<Record<string, number>>('/settings/clear-data', { method: 'POST', body: { confirm: 'DELETE' } }),
     folders: crud<FolderDto, Pick<FolderDto, 'name' | 'order' | 'parentId'>>('/folders', 'PATCH'),
     categories: crud<CategoryDto, Omit<CategoryDto, 'id'>>('/categories', 'PATCH'),
     templates: crud<TemplateDto, TemplateInput>('/templates', 'PATCH'),
