@@ -515,7 +515,7 @@ function OutlookMatchCard() {
           <MessageBarBody>
             {nothingToDo
               ? 'The app already matches Outlook.'
-              : `${plural(data.toResolve, 'enquiry', 'enquiries')} will be resolved, ${data.toReopen} reopened and ${plural(data.toImport, 'email')} imported.`}
+              : `Outlook has ${data.unreadInOutlook} unread: ${data.unreadInOutlook - data.toImport} already in the app, ${data.toImport} to import. ${plural(data.toResolve, 'enquiry', 'enquiries')} will be resolved and ${data.toReopen} reopened.`}
           </MessageBarBody>
         </MessageBar>
       )}

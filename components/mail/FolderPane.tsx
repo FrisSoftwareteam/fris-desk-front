@@ -29,6 +29,7 @@ import {
   FlagRegular,
   PanelLeftContractRegular,
   MentionRegular,
+  ArrowRoutingRegular,
   HourglassHalfRegular,
 } from '@fluentui/react-icons';
 import { useCurrentUser } from '@/components/auth/CurrentUser';
@@ -50,6 +51,7 @@ const VIEW_ICONS: Record<SystemViewId, ReactElement> = {
   approvals: <HourglassHalfRegular />,
   unassigned: <PersonQuestionMarkRegular />,
   overdue: <ClockAlarmRegular />,
+  escalated: <ArrowRoutingRegular />,
   followups: <FlagRegular />,
   drafts: <DraftsRegular />,
   deleted: <DeleteRegular />,
