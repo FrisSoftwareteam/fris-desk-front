@@ -30,6 +30,7 @@ export const SYSTEM_VIEWS: { id: SystemView; name: string }[] = [
   { id: 'approvals', name: 'Awaiting approval' },
   { id: 'unassigned', name: 'Unassigned' },
   { id: 'overdue', name: 'Overdue' },
+  { id: 'escalated', name: 'Escalated' },
   { id: 'followups', name: 'Follow-ups' },
   { id: 'drafts', name: 'Drafts' },
   // Only supervisors and admins see this one (FolderPane hides it for agents).
