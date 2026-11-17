@@ -14,6 +14,7 @@ import {
   Radio,
   RadioGroup,
   SpinButton,
+  ProgressBar,
   Spinner,
   Switch,
   Text,
@@ -26,6 +27,7 @@ import {
   PURGE_DELETED_OPTIONS,
   TICKET_PRIORITIES,
   type AssignmentMode,
+  type JobProgressDto,
   type SettingsDto,
   type TicketPriority,
 } from '@/lib/shared';
@@ -374,6 +376,7 @@ export function SettingsAdmin() {
       </div>
       {settings.data && <AssignBacklogCard saved={settings.data} />}
       <OutlookMatchCard />
+      <OutlookSentCard />
       <ClearDataCard />
     </>
   );
@@ -506,7 +509,7 @@ function OutlookMatchCard() {
         <MessageBar intent="info">
           <MessageBarBody>
             <Spinner size="tiny" className="mr-2 inline-flex" />
-            Matching… this can take a few minutes.
+            <ProgressLine progress={data.progress} fallback="Matching… this can take a few minutes." />
           </MessageBarBody>
         </MessageBar>
       )}
@@ -559,6 +562,81 @@ function OutlookMatchCard() {
             `${plural(data.toResolve, 'enquiry', 'enquiries')} will be resolved, ${data.toReopen} reopened and ${plural(data.toImport, 'email')} imported. No email is sent to shareholders. Each change appears in the enquiry's history.`}
         </Text>
       </EditDialog>
+    </div>
+  );
+}
+
+/** "Importing unread mail: 12 of 40 (30%)" while a background job runs. */
+function ProgressLine({ progress, fallback }: { progress: JobProgressDto | null; fallback: string }) {
+  if (!progress) return <>{fallback}</>;
+  if (!progress.total) return <>{progress.step}…</>;
+  const pct = Math.round((progress.done / progress.total) * 100);
+  return (
+    <>
+      {progress.step}: {progress.done} of {progress.total} ({pct}%)
+      <ProgressBar value={progress.done / progress.total} className="mt-2" />
+    </>
+  );
+}
+
+/** Copies replies officers already sent from Outlook into the enquiry threads, so nobody repeats them. */
+function OutlookSentCard() {
+  const styles = useAdminStyles();
+  const [error, setError] = useState<string | null>(null);
+  const status = useQuery({
+    queryKey: ['outlook-sent'],
+    queryFn: api.admin.outlookSent,
+    refetchInterval: (q) => (q.state.data?.running ? 3000 : false),
+  });
+  const data = status.data;
+  const last = data?.lastResult;
+
+  const start = async () => {
+    setError(null);
+    try {
+      await api.admin.startOutlookSent();
+      await status.refetch();
+    } catch (err) {
+      setError(friendlyError(err));
+    }
+  };
+
+  return (
+    <div className={mergeClasses(styles.card, styles.padded, 'mt-4 flex max-w-3xl flex-col gap-3')}>
+      <Text weight="semibold" size={400}>
+        Import replies sent from Outlook
+      </Text>
+      <Text size={200} className={styles.muted}>
+        Adds replies already sent to the shareholder from Outlook (Sent Items) to each enquiry&apos;s thread, so
+        officers can see what was said. Nothing is sent and no status changes. Safe to run again: replies already in
+        the app are skipped.
+      </Text>
+      {data?.running && (
+        <MessageBar intent="info">
+          <MessageBarBody>
+            <Spinner size="tiny" className="mr-2 inline-flex" />
+            <ProgressLine progress={data.progress} fallback="Importing… this can take a few minutes." />
+          </MessageBarBody>
+        </MessageBar>
+      )}
+      {last && !data?.running && (
+        <Text size={200} className={styles.muted}>
+          Last run {new Date(last.finishedAt).toLocaleString()}: {plural(last.imported, 'reply', 'replies')} added to{' '}
+          {plural(last.enquiries, 'enquiry', 'enquiries')}
+          {last.failed ? `, ${last.failed} failed (see the server log)` : ''}
+          {last.error ? `. Stopped: ${last.error}` : '.'}
+        </Text>
+      )}
+      {(error || status.error) && (
+        <MessageBar intent="error">
+          <MessageBarBody>{error ?? friendlyError(status.error)}</MessageBarBody>
+        </MessageBar>
+      )}
+      <div className="flex gap-2">
+        <Button appearance="primary" onClick={() => void start()} disabled={!data || data.running}>
+          Import
+        </Button>
+      </div>
     </div>
   );
 }
