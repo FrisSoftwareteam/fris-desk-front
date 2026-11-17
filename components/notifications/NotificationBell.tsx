@@ -31,6 +31,8 @@ const useStyles = makeStyles({
   // Same look as the other header buttons, but kept on phones too.
   button: {
     position: 'relative',
+    // Fluent hides overflow on the button, which clips a count that hangs off the icon.
+    overflow: 'visible',
     color: tokens.colorNeutralForegroundOnBrand,
     ':hover': { color: tokens.colorNeutralForegroundOnBrand, backgroundColor: tokens.colorBrandBackgroundHover },
     ':hover:active': {
@@ -38,7 +40,8 @@ const useStyles = makeStyles({
       backgroundColor: tokens.colorBrandBackgroundPressed,
     },
   },
-  badge: { position: 'absolute', top: '0', right: '0', pointerEvents: 'none' },
+  iconWrap: { position: 'relative', display: 'inline-flex' },
+  badge: { position: 'absolute', top: '-4px', right: '-4px', pointerEvents: 'none' },
   surface: { width: 'min(380px, calc(100vw - 32px))', padding: 0 },
   head: {
     display: 'flex',
@@ -132,12 +135,17 @@ export function NotificationBell() {
         <Tooltip content="Notifications" relationship="label">
           <Button
             appearance="transparent"
-            icon={<AlertRegular />}
+            icon={
+              <span className={styles.iconWrap}>
+                <AlertRegular />
+                {unread > 0 && (
+                  <CounterBadge count={unread} size="small" color="danger" className={styles.badge} />
+                )}
+              </span>
+            }
             className={styles.button}
             aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
-          >
-            {unread > 0 && <CounterBadge count={unread} size="small" color="danger" className={styles.badge} />}
-          </Button>
+          />
         </Tooltip>
       </PopoverTrigger>
       <PopoverSurface className={styles.surface} aria-label="Notifications">

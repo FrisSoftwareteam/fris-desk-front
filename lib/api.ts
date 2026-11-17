@@ -19,6 +19,7 @@ import {
   type ReportQuery,
   type ReportSummaryDto,
   type OutlookMatchDto,
+  type SentBackfillDto,
   type SettingsDto,
   type SlaPolicyDto,
   type AttachmentDto,
@@ -311,6 +312,8 @@ export const api = {
     patchSettings: (patch: Partial<SettingsDto>) => request<SettingsDto>('/settings', { method: 'PATCH', body: patch }),
     outlookMatch: () => request<OutlookMatchDto>('/settings/outlook-match'),
     startOutlookMatch: () => request<OutlookMatchDto>('/settings/outlook-match', { method: 'POST' }),
+    outlookSent: () => request<SentBackfillDto>('/settings/outlook-sent'),
+    startOutlookSent: () => request<SentBackfillDto>('/settings/outlook-sent', { method: 'POST' }),
     unassignedBacklog: () => request<{ count: number }>('/settings/unassigned-backlog'),
     assignBacklog: () =>
       request<{ assigned: number; skipped: number; remaining: number }>('/settings/assign-backlog', { method: 'POST' }),
