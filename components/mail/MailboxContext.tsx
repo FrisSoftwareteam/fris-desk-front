@@ -33,8 +33,9 @@ export const SYSTEM_VIEWS: { id: SystemView; name: string }[] = [
   { id: 'escalated', name: 'Escalated' },
   { id: 'followups', name: 'Follow-ups' },
   { id: 'drafts', name: 'Drafts' },
-  // Only supervisors and admins see this one (FolderPane hides it for agents).
+  // Only supervisors and admins see these two (FolderPane hides them for agents).
   { id: 'deleted', name: 'Deleted items' },
+  { id: 'not_enquiries', name: 'Not enquiries' },
 ];
 export type SystemViewId = SystemView;
 

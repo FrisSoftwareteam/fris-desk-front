@@ -26,6 +26,7 @@ import {
   ClockAlarmRegular,
   ComposeRegular,
   DeleteRegular,
+  MailProhibitedRegular,
   FlagRegular,
   PanelLeftContractRegular,
   MentionRegular,
@@ -55,6 +56,7 @@ const VIEW_ICONS: Record<SystemViewId, ReactElement> = {
   followups: <FlagRegular />,
   drafts: <DraftsRegular />,
   deleted: <DeleteRegular />,
+  not_enquiries: <MailProhibitedRegular />,
 };
 
 const useStyles = makeStyles({
@@ -131,7 +133,7 @@ export function FolderPane({ view, onSelectView, onNewEnquiry, onCollapse }: Fol
   const counts = useTicketCounts();
   const mailbox = useMailboxStatus((m) => m.address);
   const user = useCurrentUser();
-  const views = SYSTEM_VIEWS.filter((v) => v.id !== 'deleted' || user.role !== 'agent');
+  const views = SYSTEM_VIEWS.filter((v) => (v.id !== 'deleted' && v.id !== 'not_enquiries') || user.role !== 'agent');
   const address = mailbox ?? 'Shared mailbox';
 
   const label = (text: string, count: number, urgent = false) => (

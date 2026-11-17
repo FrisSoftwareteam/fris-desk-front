@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 import {
   Avatar,
   makeStyles,
@@ -25,6 +27,7 @@ import {
   FolderArrowRightRegular,
   FolderRegular,
   ImportantRegular,
+  MailProhibitedRegular,
   MailReadRegular,
   MailUnreadRegular,
   PeopleRegular,
@@ -37,6 +40,7 @@ import { useCurrentUser } from '@/components/auth/CurrentUser';
 import { CategorySwatch } from './CategoryPill';
 import { useMailbox, useTicket } from './MailboxContext';
 import { useDeletion } from './useDeletion';
+import { NotEnquiryDialog } from './NotEnquiryDialog';
 import {
   FollowUpMenu,
   PriorityIcon,
@@ -87,6 +91,7 @@ export function CommandBar({ ticketId, selection, onClearSelection }: CommandBar
   const listed = useListedTickets(selection);
   const targets: TicketSummaryDto[] = bulk ? listed : open ? [open] : [];
   const deletion = useDeletion();
+  const [notEnquiryOpen, setNotEnquiryOpen] = useState(false);
 
   // Deleted enquiries are read-only until restored (Deleted items lists only deleted ones).
   const deleted = targets.length > 0 && targets.every((t) => t.deletedAt);
@@ -299,6 +304,19 @@ export function CommandBar({ ticketId, selection, onClearSelection }: CommandBar
       >
         Resolve
       </ToolbarButton>
+
+      <ToolbarButton icon={<MailProhibitedRegular />} disabled={none} onClick={() => setNotEnquiryOpen(true)}>
+        Not an enquiry
+      </ToolbarButton>
+      <NotEnquiryDialog
+        ids={targets.map((t) => t.id)}
+        open={notEnquiryOpen}
+        onOpenChange={setNotEnquiryOpen}
+        onDone={() => {
+          setNotEnquiryOpen(false);
+          if (bulk) onClearSelection();
+        }}
+      />
 
       {deletion.canDelete &&
         (deleted ? (

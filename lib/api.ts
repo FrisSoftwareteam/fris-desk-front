@@ -10,6 +10,7 @@ import {
   type BreakdownDto,
   type BreakdownGroup,
   type BulkResultDto,
+  type NotEnquiryDto,
   type BulkTicketPatchDto,
   type StatusReasonDto,
   type ReportExport,
@@ -213,6 +214,10 @@ export const api = {
   bulkUpdate: (body: BulkTicketPatchDto) => request<BulkResultDto>('/tickets/bulk', { method: 'POST', body }),
   bulkDelete: (ids: string[]) => request<BulkResultDto>('/tickets/bulk/delete', { method: 'POST', body: { ids } }),
   bulkRestore: (ids: string[]) => request<BulkResultDto>('/tickets/bulk/restore', { method: 'POST', body: { ids } }),
+  markNotEnquiry: (id: string, body: NotEnquiryDto) =>
+    request<void>(`/tickets/${encodeURIComponent(id)}/not-enquiry`, { method: 'POST', body }),
+  bulkNotEnquiry: (ids: string[], body: NotEnquiryDto) =>
+    request<BulkResultDto>('/tickets/bulk/not-enquiry', { method: 'POST', body: { ids, ...body } }),
 
   /** Saves an attachment (pictures included), named as the API names it. */
   downloadAttachment: (id: string, fallbackName = 'attachment') =>

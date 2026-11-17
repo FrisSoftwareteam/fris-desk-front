@@ -382,8 +382,8 @@ export function MessageList({
           </Tooltip>
         )}
       </div>
-      {/* Search covers every enquiry, open and resolved, and Deleted items shows both, so no tabs. */}
-      {!q && view !== 'deleted' && (
+      {/* Search covers every enquiry, open and resolved, and Deleted items / Not enquiries show both, so no tabs. */}
+      {!q && view !== 'deleted' && view !== 'not_enquiries' && (
         <TabList
           className={styles.tabs}
           size="small"
