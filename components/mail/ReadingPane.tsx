@@ -47,6 +47,7 @@ import {
   TagRegular,
 } from '@fluentui/react-icons';
 import {
+  NOT_ENQUIRY_LABELS,
   PRIORITY_LABELS,
   TICKET_PRIORITIES,
   type ComposeKind,
@@ -684,9 +685,19 @@ function DeletedBanner({
     <>
       <MessageBar intent="warning" className={className} icon={<DeleteRegular />}>
         <MessageBarBody>
-          In Deleted items: deleted{' '}
-          {ticket.deletedBy ? `by ${ticket.deletedBy.displayName}` : 'automatically (retention schedule or system)'} on{' '}
-          {when}.{' '}
+          {ticket.notEnquiry ? (
+            <>
+              Not an enquiry ({NOT_ENQUIRY_LABELS[ticket.notEnquiry.reason]}
+              {ticket.notEnquiry.note && `: “${ticket.notEnquiry.note}”`}): marked by{' '}
+              {ticket.deletedBy?.displayName ?? 'an officer'} on {when}. Restore it if it needs a reply.{' '}
+            </>
+          ) : (
+            <>
+              In Deleted items: deleted{' '}
+              {ticket.deletedBy ? `by ${ticket.deletedBy.displayName}` : 'automatically (retention schedule or system)'}{' '}
+              on {when}.{' '}
+            </>
+          )}
           {ticket.purgeAt
             ? `It will be permanently deleted on ${longDate.format(new Date(ticket.purgeAt))}.`
             : 'It stays here until someone restores or permanently deletes it.'}
