@@ -39,6 +39,7 @@ import {
   EyeRegular,
   FlagFilled,
   FlagRegular,
+  TimerRegular,
   MailReadRegular,
   NoteRegular,
   PeopleTeamRegular,
@@ -73,6 +74,7 @@ import { ShareholderButton } from '@/components/shareholders/ShareholderButton';
 import { SlaChip } from './SlaChip';
 import { queryKeys, useMailbox, useMailboxStatus, useTicket } from './MailboxContext';
 import {
+  AutoResolveMenu,
   FollowUpMenu,
   PriorityIcon,
   patchForStatusChoice,
@@ -498,6 +500,17 @@ export function ReadingPane({ ticketId, onBack, onClosed }: ReadingPaneProps) {
               </MenuButton>
             </FollowUpMenu>
 
+            {ticket.status !== 'resolved' && (
+              <AutoResolveMenu
+                hasCurrent={Boolean(ticket.autoResolve)}
+                onChange={(autoResolveDays) => updateTicket(ticket.id, { autoResolveDays })}
+              >
+                <MenuButton size="small" icon={<TimerRegular />}>
+                  Auto-resolve
+                </MenuButton>
+              </AutoResolveMenu>
+            )}
+
             <span className={styles.spacer} />
 
             <Menu positioning="below-end">
@@ -579,6 +592,19 @@ export function ReadingPane({ ticketId, onBack, onClosed }: ReadingPaneProps) {
           <MessageBarActions>
             <Button size="small" onClick={() => updateTicket(ticket.id, { followUp: null })}>
               Mark complete
+            </Button>
+          </MessageBarActions>
+        </MessageBar>
+      )}
+      {ticket.autoResolve && !ticket.deletedAt && (
+        <MessageBar intent="info" icon={<TimerRegular />} className={styles.banner}>
+          <MessageBarBody>
+            Resolves automatically {formatFullDateTime(ticket.autoResolve.at)} if the shareholder doesn’t reply
+            {ticket.autoResolve.setBy && <> (set by {ticket.autoResolve.setBy.displayName})</>}.
+          </MessageBarBody>
+          <MessageBarActions>
+            <Button size="small" onClick={() => updateTicket(ticket.id, { autoResolveDays: null })}>
+              Cancel
             </Button>
           </MessageBarActions>
         </MessageBar>

@@ -23,9 +23,17 @@ import {
   Textarea,
   tokens,
 } from '@fluentui/react-components';
-import { ArrowDownRegular, CalendarClockRegular, CheckmarkRegular, ImportantFilled } from '@fluentui/react-icons';
 import {
+  ArrowDownRegular,
+  CalendarClockRegular,
+  CheckmarkRegular,
+  DismissRegular,
+  ImportantFilled,
+} from '@fluentui/react-icons';
+import {
+  AUTO_RESOLVE_DAYS,
   PRIORITY_LABELS,
+  type AutoResolveDays,
   TICKET_STATUSES,
   type FollowUpDto,
   type StatusReasonDto,
@@ -121,6 +129,41 @@ function toLocalInput(d: Date): string {
 }
 
 export type FollowUpPatch = NonNullable<TicketPatchDto['followUp']> | null;
+
+/**
+ * "Resolve if no reply": moves the enquiry to Awaiting shareholder and resolves it after the chosen
+ * days unless the shareholder writes back (which cancels it). `hasCurrent` enables Cancel.
+ */
+export function AutoResolveMenu({
+  hasCurrent,
+  onChange,
+  disabled,
+  children,
+}: {
+  hasCurrent: boolean;
+  onChange: (days: AutoResolveDays | null) => void;
+  disabled?: boolean;
+  children: ReactElement;
+}) {
+  return (
+    <Menu>
+      <MenuTrigger disableButtonEnhancement>{children}</MenuTrigger>
+      <MenuPopover>
+        <MenuList>
+          {AUTO_RESOLVE_DAYS.map((days) => (
+            <MenuItem key={days} disabled={disabled} onClick={() => onChange(days)}>
+              Resolve if no reply in {days} days
+            </MenuItem>
+          ))}
+          <MenuDivider />
+          <MenuItem icon={<DismissRegular />} disabled={disabled || !hasCurrent} onClick={() => onChange(null)}>
+            Cancel auto-resolve
+          </MenuItem>
+        </MenuList>
+      </MenuPopover>
+    </Menu>
+  );
+}
 
 interface FollowUpMenuProps {
   /** The current follow-up (one enquiry); undefined for a selection. */

@@ -160,7 +160,8 @@ export function MailboxProvider({ children }: { children: ReactNode }) {
         patch.status ||
         patch.statusReasonId !== undefined ||
         patch.assigneeId !== undefined ||
-        patch.followUp !== undefined
+        patch.followUp !== undefined ||
+        patch.autoResolveDays !== undefined
       ) {
         void client.invalidateQueries({ queryKey: ['tickets'] });
       }

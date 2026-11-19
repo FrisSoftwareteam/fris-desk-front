@@ -101,6 +101,10 @@ export function SettingsAdmin() {
       setStatus({ intent: 'error', text: 'Choose the template to send before turning on the resolution email.' });
       return;
     }
+    if (body.autoResolveEmail.enabled && !body.autoResolveEmail.templateId) {
+      setStatus({ intent: 'error', text: 'Choose the template to send before turning on the auto-resolve email.' });
+      return;
+    }
     if (body.roundRobinEnabled && body.defaultPool.length === 0) {
       setStatus({
         intent: 'error',
@@ -121,6 +125,7 @@ export function SettingsAdmin() {
 
   const templateName = templates.data?.find((t) => t.id === form.autoAcknowledge.templateId)?.name;
   const resolutionTemplateName = templates.data?.find((t) => t.id === form.resolutionEmail.templateId)?.name;
+  const autoResolveTemplateName = templates.data?.find((t) => t.id === form.autoResolveEmail.templateId)?.name;
   const allowlist = mailbox.data?.sendAllowlist;
 
   return (
@@ -181,6 +186,38 @@ export function SettingsAdmin() {
               selectedOptions={form.resolutionEmail.templateId ? [form.resolutionEmail.templateId] : []}
               onOptionSelect={(_, d) =>
                 setForm({ ...form, resolutionEmail: { ...form.resolutionEmail, templateId: d.optionValue ?? null } })
+              }
+            >
+              {(templates.data ?? []).map((t) => (
+                <Option key={t.id} value={t.id}>
+                  {t.name}
+                </Option>
+              ))}
+            </Dropdown>
+          </Field>
+        </section>
+
+        <section className="flex flex-col gap-3">
+          <Text weight="semibold" size={400}>
+            Auto-resolve email
+          </Text>
+          <Switch
+            label="Email the shareholder when an enquiry resolves itself because they didn't reply in time"
+            checked={form.autoResolveEmail.enabled}
+            onChange={(_, d) =>
+              setForm({ ...form, autoResolveEmail: { ...form.autoResolveEmail, enabled: d.checked } })
+            }
+          />
+          <Field
+            label="Template to send"
+            hint="For example: “We haven't heard back, so we've closed this enquiry. Just reply to this email to continue.” A reply reopens the enquiry."
+          >
+            <Dropdown
+              placeholder="Choose a template"
+              value={autoResolveTemplateName ?? ''}
+              selectedOptions={form.autoResolveEmail.templateId ? [form.autoResolveEmail.templateId] : []}
+              onOptionSelect={(_, d) =>
+                setForm({ ...form, autoResolveEmail: { ...form.autoResolveEmail, templateId: d.optionValue ?? null } })
               }
             >
               {(templates.data ?? []).map((t) => (
@@ -429,7 +466,9 @@ function AssignBacklogCard({ saved }: { saved: SettingsDto }) {
       {backlog.data && (
         <MessageBar intent={count ? 'info' : 'success'}>
           <MessageBarBody>
-            {count ? `${plural(count, 'open enquiry', 'open enquiries')} unassigned.` : 'Every open enquiry is assigned.'}
+            {count
+              ? `${plural(count, 'open enquiry', 'open enquiries')} unassigned.`
+              : 'Every open enquiry is assigned.'}
           </MessageBarBody>
         </MessageBar>
       )}
@@ -608,8 +647,8 @@ function OutlookSentCard() {
       </Text>
       <Text size={200} className={styles.muted}>
         Adds replies already sent to the shareholder from Outlook (Sent Items) to each enquiry&apos;s thread, so
-        officers can see what was said. Nothing is sent and no status changes. Safe to run again: replies already in
-        the app are skipped.
+        officers can see what was said. Nothing is sent and no status changes. Safe to run again: replies already in the
+        app are skipped.
       </Text>
       {data?.running && (
         <MessageBar intent="info">
