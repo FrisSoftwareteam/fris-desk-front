@@ -34,6 +34,7 @@ import {
   PersonAddRegular,
   StatusRegular,
   TagRegular,
+  TimerRegular,
 } from '@fluentui/react-icons';
 import { PRIORITY_LABELS, TICKET_PRIORITIES, type BulkTicketPatchDto, type TicketSummaryDto } from '@/lib/shared';
 import { useCurrentUser } from '@/components/auth/CurrentUser';
@@ -42,6 +43,7 @@ import { useMailbox, useTicket } from './MailboxContext';
 import { useDeletion } from './useDeletion';
 import { NotEnquiryDialog } from './NotEnquiryDialog';
 import {
+  AutoResolveMenu,
   FollowUpMenu,
   PriorityIcon,
   patchForStatusChoice,
@@ -286,6 +288,16 @@ export function CommandBar({ ticketId, selection, onClearSelection }: CommandBar
           Follow up
         </ToolbarButton>
       </FollowUpMenu>
+
+      <AutoResolveMenu
+        hasCurrent={bulk || Boolean(open?.autoResolve)}
+        disabled={none}
+        onChange={(autoResolveDays) => apply({ autoResolveDays })}
+      >
+        <ToolbarButton icon={<TimerRegular />} disabled={none}>
+          Auto-resolve
+        </ToolbarButton>
+      </AutoResolveMenu>
 
       <ToolbarButton
         icon={anyUnread ? <MailReadRegular /> : <MailUnreadRegular />}
