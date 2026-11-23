@@ -7,6 +7,7 @@ import {
   Badge,
   Button,
   Dropdown,
+  Input,
   makeStyles,
   Menu,
   MenuButton,
@@ -199,6 +200,18 @@ const useStyles = makeStyles({
     textAlign: 'center',
     color: tokens.colorNeutralForeground3,
   },
+  menuSearch: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 1,
+    minWidth: '240px',
+    padding: tokens.spacingHorizontalXS,
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  menuList: {
+    maxHeight: 'min(320px, 40vh)',
+    overflowY: 'auto',
+  },
 });
 
 interface ReadingPaneProps {
@@ -232,6 +245,8 @@ export function ReadingPane({ ticketId, onBack, onClosed }: ReadingPaneProps) {
   const [compose, setCompose] = useState<ComposeState | null>(null);
   const composeRef = useRef<HTMLDivElement>(null);
   const [escalating, setEscalating] = useState<{ departmentId: string | null } | null>(null);
+  const [escalateQuery, setEscalateQuery] = useState('');
+  const escalateSearch = useRef<HTMLInputElement>(null);
   const me = useCurrentUser();
   const notify = useNotify();
   // Collision detection: who else has this enquiry open, and whether they're writing a reply.
@@ -241,6 +256,12 @@ export function ReadingPane({ ticketId, onBack, onClosed }: ReadingPaneProps) {
     if (!compose || compose.kind === 'note') setReplying(false);
   }, [compose, setReplying]);
   const departments = useQuery({ queryKey: ['departments'], queryFn: () => api.departments(), staleTime: 5 * 60_000 });
+  const escalateQueryText = escalateQuery.trim().toLowerCase();
+  const escalateDepartments = (departments.data ?? []).filter(
+    (d) =>
+      !escalateQueryText ||
+      [d.name, d.email, d.description].some((part) => part.toLowerCase().includes(escalateQueryText)),
+  );
 
   // Outlook-style: reopening an enquiry brings back the officer's unsent draft.
   const draft = useQuery({
@@ -513,7 +534,13 @@ export function ReadingPane({ ticketId, onBack, onClosed }: ReadingPaneProps) {
 
             <span className={styles.spacer} />
 
-            <Menu positioning="below-end">
+            <Menu
+              positioning={{ position: 'below', align: 'end', autoSize: 'height', overflowBoundaryPadding: 8 }}
+              onOpenChange={(_, data) => {
+                if (data.open) requestAnimationFrame(() => escalateSearch.current?.focus());
+                else setEscalateQuery('');
+              }}
+            >
               <MenuTrigger disableButtonEnhancement>
                 {(triggerProps: MenuButtonProps) => (
                   <SplitButton
@@ -531,8 +558,22 @@ export function ReadingPane({ ticketId, onBack, onClosed }: ReadingPaneProps) {
                 )}
               </MenuTrigger>
               <MenuPopover>
-                <MenuList>
-                  {(departments.data ?? []).map((d) => (
+                <div className={styles.menuSearch}>
+                  <Input
+                    ref={escalateSearch}
+                    size="small"
+                    style={{ width: '100%' }}
+                    placeholder="Search"
+                    aria-label="Search teams and people"
+                    value={escalateQuery}
+                    onChange={(_, data) => setEscalateQuery(data.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Escape') e.stopPropagation();
+                    }}
+                  />
+                </div>
+                <MenuList className={styles.menuList}>
+                  {escalateDepartments.map((d) => (
                     <MenuItem
                       key={d.id}
                       icon={d.type === 'person' ? <PersonRegular /> : <PeopleTeamRegular />}
@@ -545,6 +586,9 @@ export function ReadingPane({ ticketId, onBack, onClosed }: ReadingPaneProps) {
                   ))}
                   {departments.data?.length === 0 && (
                     <MenuItem disabled>No teams yet — an admin adds them in Admin → Departments</MenuItem>
+                  )}
+                  {departments.data && departments.data.length > 0 && escalateDepartments.length === 0 && (
+                    <MenuItem disabled>No matches</MenuItem>
                   )}
                 </MenuList>
               </MenuPopover>

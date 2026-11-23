@@ -145,6 +145,18 @@ const useStyles = makeStyles({
     flexWrap: 'wrap',
     gap: tokens.spacingHorizontalS,
   },
+  menuSearch: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 1,
+    minWidth: '220px',
+    padding: tokens.spacingHorizontalXS,
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  menuList: {
+    maxHeight: 'min(320px, 40vh)',
+    overflowY: 'auto',
+  },
 });
 
 function hasContent(s: ComposeState, editorEmpty: boolean) {
@@ -174,7 +186,9 @@ export function Composer({ ticket, initial, onClose, onSent }: ComposerProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [templateQuery, setTemplateQuery] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
+  const templateSearch = useRef<HTMLInputElement>(null);
 
   // Latest values for the autosave timers and the unmount/unload flush.
   const latest = useRef(state);
@@ -259,6 +273,10 @@ export function Composer({ ticket, initial, onClose, onSent }: ComposerProps) {
     staleTime: 5 * 60_000,
     enabled: !isNote,
   });
+  const templateQueryText = templateQuery.trim().toLowerCase();
+  const templateMatches = (templates.data ?? []).filter(
+    (t) => !templateQueryText || t.name.toLowerCase().includes(templateQueryText),
+  );
 
   const insertTemplate = (t: TemplateDto) => {
     if (!editor) return;
@@ -420,16 +438,42 @@ export function Composer({ ticket, initial, onClose, onSent }: ComposerProps) {
         {!isNote && (
           <>
             <ToolbarDivider />
-            <Menu>
+            <Menu
+              positioning={{ position: 'above', autoSize: 'height', overflowBoundaryPadding: 8 }}
+              onOpenChange={(_, data) => {
+                if (data.open) requestAnimationFrame(() => templateSearch.current?.focus());
+                else setTemplateQuery('');
+              }}
+            >
               <MenuTrigger disableButtonEnhancement>
                 <ToolbarButton icon={<DocumentTextRegular />}>Canned responses</ToolbarButton>
               </MenuTrigger>
               <MenuPopover>
+                <div className={styles.menuSearch}>
+                  <Input
+                    ref={templateSearch}
+                    size="small"
+                    style={{ width: '100%' }}
+                    placeholder="Search"
+                    aria-label="Search canned responses"
+                    value={templateQuery}
+                    onChange={(_, data) => setTemplateQuery(data.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Escape') e.stopPropagation();
+                    }}
+                  />
+                </div>
                 {/* Keeps names aligned when only some templates show the form-file icon. */}
-                <MenuList hasIcons={templates.data?.some((t) => t.attachments.length > 0)}>
+                <MenuList
+                  className={styles.menuList}
+                  hasIcons={templates.data?.some((t) => t.attachments.length > 0)}
+                >
                   {templates.isPending && <MenuItem disabled>Loading…</MenuItem>}
                   {templates.data?.length === 0 && <MenuItem disabled>No templates yet</MenuItem>}
-                  {templates.data?.map((t) => (
+                  {templates.data &&
+                    templates.data.length > 0 &&
+                    templateMatches.length === 0 && <MenuItem disabled>No matches</MenuItem>}
+                  {templateMatches.map((t) => (
                     <MenuItem
                       key={t.id}
                       icon={t.attachments.length > 0 ? <AttachRegular /> : undefined}

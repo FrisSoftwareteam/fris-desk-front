@@ -8,8 +8,8 @@ import {
   DialogBody,
   DialogContent,
   DialogSurface,
+  Combobox,
   DialogTitle,
-  Dropdown,
   Field,
   MessageBar,
   MessageBarBody,
@@ -22,6 +22,15 @@ import {
 import { PeopleTeamRegular, PersonRegular } from '@fluentui/react-icons';
 import type { DepartmentDto, TicketDetailDto } from '@/lib/shared';
 import { api } from '@/lib/api';
+
+/** Keep the open list inside the viewport, and no taller than the dialog can comfortably show. */
+function capEscalateList(e: { currentTarget: EventTarget | null }) {
+  const el = e.currentTarget;
+  if (!(el instanceof HTMLElement)) return;
+  const cap = Math.min(280, window.innerHeight * 0.4);
+  const applied = Number.parseFloat(el.style.maxHeight);
+  el.style.maxHeight = `${Number.isFinite(applied) ? Math.min(applied, cap) : cap}px`;
+}
 
 interface EscalateDialogProps {
   ticket: TicketDetailDto;
@@ -46,6 +55,7 @@ export function EscalateDialog({
   onEscalated,
 }: EscalateDialogProps) {
   const [chosen, setChosen] = useState<string | null>(departmentId);
+  const [deptQuery, setDeptQuery] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -53,11 +63,18 @@ export function EscalateDialog({
   useEffect(() => {
     if (open) {
       setChosen(departmentId);
+      setDeptQuery('');
       setError(null);
     }
   }, [open, departmentId]);
 
   const department = departments.find((d) => d.id === chosen);
+  const deptQueryText = deptQuery.trim().toLowerCase();
+  const visibleDepartments = departments.filter(
+    (d) =>
+      !deptQueryText ||
+      [d.name, d.email, d.description].some((part) => part.toLowerCase().includes(deptQueryText)),
+  );
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -91,13 +108,30 @@ export function EscalateDialog({
                 </MessageBar>
               )}
               <Field label="Escalate to" required>
-                <Dropdown
+                <Combobox
                   placeholder="Choose a team or person"
-                  value={department?.name ?? ''}
+                  style={{ width: '100%', minWidth: 0 }}
                   selectedOptions={chosen ? [chosen] : []}
-                  onOptionSelect={(_, d) => setChosen(d.optionValue ?? null)}
+                  onChange={(e) => setDeptQuery(e.target.value)}
+                  onOptionSelect={(_, data) => {
+                    if (!data.optionValue || data.optionValue === 'no-matches') {
+                      setChosen(null);
+                      return;
+                    }
+                    setChosen(data.optionValue);
+                    setDeptQuery('');
+                  }}
+                  onOpenChange={(_, data) => {
+                    if (!data.open) setDeptQuery('');
+                  }}
+                  positioning={{
+                    autoSize: 'height',
+                    overflowBoundaryPadding: 8,
+                    onPositioningEnd: capEscalateList,
+                  }}
+                  listbox={{ style: { maxHeight: 'min(280px, 40vh)' } }}
                 >
-                  {departments.map((d) => (
+                  {visibleDepartments.map((d) => (
                     <Option key={d.id} value={d.id} text={d.name}>
                       <span className="flex items-center gap-2">
                         {d.type === 'person' ? <PersonRegular /> : <PeopleTeamRegular />}
@@ -110,7 +144,12 @@ export function EscalateDialog({
                       </span>
                     </Option>
                   ))}
-                </Dropdown>
+                  {departments.length > 0 && visibleDepartments.length === 0 && (
+                    <Option disabled value="no-matches" text="No matches">
+                      No matches
+                    </Option>
+                  )}
+                </Combobox>
               </Field>
               {department?.description && (
                 <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>

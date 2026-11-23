@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
   experimental: {
     // Fluent's packages re-export thousands of modules; load only the ones the app imports.
     optimizePackageImports: ['@fluentui/react-components', '@fluentui/react-icons'],
+    agentUpgrade: 'security',
   },
   // Baseline security headers for every page. No Content-Security-Policy: Fluent (Griffel) injects
   // inline styles, and email HTML is already isolated in a sandboxed frame with its own CSP.

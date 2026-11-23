@@ -2,6 +2,7 @@ import {
   type ShareholderDto,
   type ShareholderInput,
   CSRF_HEADER,
+  type EmailAddress,
   type AdminUserCreateDto,
   type AdminUserDto,
   type AdminUserPatchDto,
@@ -197,6 +198,8 @@ export const api = {
   folders: () => request<FolderDto[]>('/folders'),
   categories: () => request<CategoryDto[]>('/categories'),
   users: () => request<StaffDto[]>('/users'),
+  /** Colleagues on the firm's domain whose name or address starts with `q` (To/Cc suggestions). */
+  directory: (q: string) => request<EmailAddress[]>(`/directory?q=${encodeURIComponent(q)}`),
   statusReasons: () => request<StatusReasonDto[]>('/status-reasons'),
 
   tickets: (params: { view: string; tab: 'open' | 'resolved'; q?: string; cursor?: string | null }) => {
