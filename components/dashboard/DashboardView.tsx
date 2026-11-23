@@ -234,7 +234,7 @@ export function DashboardView() {
           <Tile
             label="Open now"
             value={summary.data?.openNow}
-            hint={oneOfficer ? 'Assigned to them, not yet resolved' : 'Not yet resolved'}
+            hint={oneOfficer ? 'Assigned to them, not yet resolved' : openHint(summary.data)}
           />
           <Tile label="Resolved" value={summary.data?.resolved} hint="In this period" />
           <Tile
@@ -330,6 +330,12 @@ export function DashboardView() {
       </div>
     </div>
   );
+}
+
+function openHint(s: { openNow: number; unassignedNow: number } | undefined): string {
+  if (!s) return '';
+  if (!s.unassignedNow) return 'All with officers';
+  return `${s.openNow - s.unassignedNow} with officers · ${s.unassignedNow} unassigned`;
 }
 
 function originHint(byOrigin: Record<string, number> | undefined): string {

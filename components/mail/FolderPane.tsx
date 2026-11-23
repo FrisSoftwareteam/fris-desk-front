@@ -21,6 +21,7 @@ import {
   DraftsRegular,
   FolderRegular,
   MailInboxRegular,
+  PersonClockRegular,
   PersonRegular,
   PersonQuestionMarkRegular,
   ClockAlarmRegular,
@@ -53,6 +54,7 @@ const VIEW_ICONS: Record<SystemViewId, ReactElement> = {
   unassigned: <PersonQuestionMarkRegular />,
   overdue: <ClockAlarmRegular />,
   escalated: <ArrowRoutingRegular />,
+  awaiting: <PersonClockRegular />,
   followups: <FlagRegular />,
   drafts: <DraftsRegular />,
   deleted: <DeleteRegular />,
@@ -167,7 +169,7 @@ export function FolderPane({ view, onSelectView, onNewEnquiry, onCollapse }: Fol
         >
           <NavSectionHeader>Views</NavSectionHeader>
           {views.map((v) => {
-            // Like Outlook: Drafts (and Overdue, Follow-ups due) show their total; the rest show unread.
+            // Like Outlook: Drafts (and Overdue, Awaiting, Follow-ups due) show their total; the rest show unread.
             const count = counts?.views[v.id] ?? 0;
             return (
               <NavItem key={v.id} value={v.id} icon={VIEW_ICONS[v.id]} className={styles.item}>
